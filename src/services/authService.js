@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:8080/api/auth';
+import config from '../config.js';
+
+const API_URL = config.API_URL;
 
 const handleResponse = async (response) => {
   const data = await response.json();
@@ -20,7 +22,7 @@ const authService = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email, password }),
-        credentials: 'include' // For cookies if using them
+        credentials: 'include'
       });
       return await handleResponse(response);
     } catch (error) {
@@ -31,14 +33,31 @@ const authService = {
 
   async register(userData) {
     try {
-      const response = await fetch(`${API_URL}/register`, {
-        method: 'POST',
-        credentials:"include",  
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
+      let response;
+      
+      // Check if userData is FormData (has file) or regular object
+      if (userData instanceof FormData) {
+        // Send to multipart endpoint for file uploads
+        response = await fetch(`${API_URL}/register`, {
+          method: 'POST',
+          body: userData, // Don't set Content-Type header for FormData
+          credentials: 'include'
+        });
+      } else {
+        // Send to JSON endpoint for regular registration
+        const userDataObj = {};
+        Object.assign(userDataObj, userData);
+        
+        response = await fetch(`${API_URL}/register/json`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userDataObj),
+          credentials: 'include'
+        });
+      }
+      
       return await handleResponse(response);
     } catch (error) {
       console.error('Registration error:', error);
@@ -87,7 +106,8 @@ const authService = {
           'Content-Type': 'application/json',
         },
       });
-      return await handleResponse(response);
+      const result = await handleResponse(response);
+      return result.data; // Return the user data
     } catch (error) {
       console.error('Token verification error:', error);
       throw new Error('Failed to verify token');

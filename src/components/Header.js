@@ -1,10 +1,52 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Header = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Function to get profile image URL
+  const getProfileImageUrl = (profilePicture) => {
+    if (!profilePicture) return null;
+    
+    // If it's already a full URL, return as is
+    if (profilePicture.startsWith('http')) {
+      return profilePicture;
+    }
+    
+    // If it's a relative path, construct the full URL
+    if (profilePicture.startsWith('/api/')) {
+      return `http://localhost:8080${profilePicture}`;
+    }
+    
+    // Default fallback - construct full URL from image name
+    return `http://localhost:8080/api/auth/profile-picture/${profilePicture}`;
+  };
+
+  const handleLogout = () => {
+    logout();
+    setIsDropdownOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="bg-gray-900 text-white shadow-lg">
@@ -34,23 +76,65 @@ const Header = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
           </Link>
-          {user ? (
-            <div className="relative group">
-              <button className="flex items-center space-x-1">
-                <span>{user.name}</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {isAuthenticated && user ? (
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={toggleDropdown}
+                className="flex items-center space-x-2 hover:bg-gray-700 rounded-full p-1 transition"
+              >
+                {/* Profile Image */}
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-600 flex items-center justify-center">
+                  {user.profilePicture ? (
+                    <img
+                      src={getProfileImageUrl(user.profilePicture)}
+                      alt={user.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-full h-full flex items-center justify-center text-white text-sm font-semibold ${user.profilePicture ? 'hidden' : ''}`}>
+                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                </div>
+                <span className="hidden md:block">{user.name}</span>
+                <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 hidden group-hover:block">
-                <Link to="/profile" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">Profile</Link>
-                <button 
-                  onClick={logout}
-                  className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100"
-                >
-                  Logout
-                </button>
-              </div>
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <div className="px-4 py-2 border-b border-gray-200">
+                    <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
+                  </div>
+                  <Link 
+                    to="/profile" 
+                    className="block px-4 py-2 text-gray-800 hover:bg-gray-100 text-sm"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span>Profile</span>
+                    </div>
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-gray-100 text-sm"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span>Sign Out</span>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Link 

@@ -8,26 +8,59 @@ const Register = () => {
     email: '',
     password: '',
     phone: '',
-    address: ''
+    address: '',
+    profilePicture: null
   });
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, files } = e.target;
+    if (type === 'file') {
+      setFormData(prev => ({ ...prev, [name]: files[0] }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const trimmedPassword = formData.password ? formData.password.trim() : '';
+    if (!trimmedPassword) {
+      setError("Password cannot be null or empty");
+      return;
+    }
     try {
-      await register(formData);
+      // Create FormData for multipart upload
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('password', trimmedPassword);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('address', formData.address);
+      
+      // Add profile picture if selected
+      if (formData.profilePicture) {
+        formDataToSend.append('profilePicture', formData.profilePicture);
+      }
+      
+      // Debug: print all user data
+      console.log('User data being sent:', {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        hasProfilePicture: !!formData.profilePicture
+      });
+      
+      await register(formDataToSend);
       navigate('/');
     } catch (err) {
       setError(err.message);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -111,7 +144,17 @@ const Register = () => {
               />
             </div>
           </div>
-
+          <div>
+            <label htmlFor="profilePicture" className="block text-sm font-medium text-gray-700 mb-1">Profile Picture</label>
+            <input
+              id="profilePicture"
+              name="profilePicture"
+              type="file"
+              accept="image/*"
+              onChange={handleChange}
+              className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
+            />
+          </div>
           <div>
             <button
               type="submit"

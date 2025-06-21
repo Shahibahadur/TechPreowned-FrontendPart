@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');
-    navigate('/login');
+    navigate('/');
   }, [navigate]);
 
   useEffect(() => {
@@ -37,11 +37,15 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const { user, token } = await authService.login(email, password);
-      setUser(user);
-      setToken(token);
-      localStorage.setItem('token', token);
-      navigate('/');
+      const response = await authService.login(email, password);
+      if (response.success) {
+        setUser(response.data);
+        setToken(response.token);
+        localStorage.setItem('token', response.token);
+        navigate('/');
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
     } catch (error) {
       throw error;
     }
@@ -49,13 +53,17 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const { user, token } = await authService.register(userData);
-      setUser(user);
-      setToken(token);
-      localStorage.setItem('token', token);
-      navigate('/');
+      const response = await authService.register(userData);
+      if (response.success) {
+        setUser(response.data);
+        setToken(response.token);
+        localStorage.setItem('token', response.token);
+        navigate('/');
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
     } catch (error) {
-      throw error;;
+      throw error;
     }
   };
 
@@ -85,7 +93,8 @@ export const AuthProvider = ({ children }) => {
       register,
       logout,
       forgotPassword,
-      resetPassword
+      resetPassword,
+      isAuthenticated: !!user
     }}>
       {!isLoading && children}
     </AuthContext.Provider>
